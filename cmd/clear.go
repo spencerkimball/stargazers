@@ -20,7 +20,7 @@ import (
 	"errors"
 
 	"github.com/cockroachdb/cockroach/util/log"
-	"github.com/cockroachdb/misc/stargazers/fetch"
+	"github.com/spencerkimball/stargazers/fetch"
 	"github.com/spf13/cobra"
 )
 

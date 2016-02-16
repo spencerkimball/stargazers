@@ -27,7 +27,7 @@ import (
 
 	"github.com/cockroachdb/cockroach/util"
 	"github.com/cockroachdb/cockroach/util/log"
-	"github.com/cockroachdb/misc/stargazers/fetch"
+	"github.com/spencerkimball/stargazers/fetch"
 )
 
 const (
@@ -90,16 +90,19 @@ func RunAll(c *fetch.Context, sg []*fetch.Stargazer, rs map[string]*fetch.Repo) 
 	if err := RunCumulativeStars(c, sg); err != nil {
 		return err
 	}
-	if err := RunFollowers(c, sg); err != nil {
-		return err
-	}
 	if err := RunCorrelatedRepos(c, "starred", sg, rs); err != nil {
 		return err
 	}
 	if err := RunCorrelatedRepos(c, "subscribed", sg, rs); err != nil {
 		return err
 	}
+	if err := RunFollowers(c, sg); err != nil {
+		return err
+	}
 	if err := RunCommitters(c, sg, rs); err != nil {
+		return err
+	}
+	if err := RunAttributesByTime(c, sg, rs); err != nil {
 		return err
 	}
 	return nil
@@ -157,49 +160,6 @@ func RunCumulativeStars(c *fetch.Context, sg []*fetch.Stargazer) error {
 	}
 	w.Flush()
 	log.Infof("wrote cumulative stars analysis to %s", f.Name())
-
-	return nil
-}
-
-// RunFollowers computes the size of follower networks, as well as
-// the count of shared followers.
-func RunFollowers(c *fetch.Context, sg []*fetch.Stargazer) error {
-	log.Infof("running followers analysis")
-
-	// Open file and prepare.
-	f, err := createFile(c, "followers.csv")
-	if err != nil {
-		return util.Errorf("failed to create file: %s", err)
-	}
-	defer f.Close()
-	w := csv.NewWriter(f)
-	if err := w.Write([]string{"Name", "Login", "URL", "Avatar URL", "Company", "Location", "Followers", "Shared Followers"}); err != nil {
-		return util.Errorf("failed to write to CSV: %s", err)
-	}
-
-	shared := map[string]int{}
-	for _, s := range sg {
-		for _, f := range s.Followers {
-			shared[f.Login]++
-		}
-	}
-
-	// For each stargazer, output followers, and shared followers.
-	// Now accumulate by days.
-	for _, s := range sg {
-		sharedCount := 0
-		for _, f := range s.Followers {
-			if c := shared[f.Login]; c > 1 {
-				sharedCount++
-			}
-		}
-		url := fmt.Sprintf("https://github.com/%s", s.Login)
-		if err := w.Write([]string{s.Name, s.Login, url, s.AvatarURL, s.Company, s.Location, strconv.Itoa(s.User.Followers), strconv.Itoa(sharedCount)}); err != nil {
-			return util.Errorf("failed to write to CSV: %s", err)
-		}
-	}
-	w.Flush()
-	log.Infof("wrote followers analysis to %s", f.Name())
 
 	return nil
 }
@@ -287,6 +247,49 @@ func RunCorrelatedRepos(c *fetch.Context, listType string, sg []*fetch.Stargazer
 	return nil
 }
 
+// RunFollowers computes the size of follower networks, as well as
+// the count of shared followers.
+func RunFollowers(c *fetch.Context, sg []*fetch.Stargazer) error {
+	log.Infof("running followers analysis")
+
+	// Open file and prepare.
+	f, err := createFile(c, "followers.csv")
+	if err != nil {
+		return util.Errorf("failed to create file: %s", err)
+	}
+	defer f.Close()
+	w := csv.NewWriter(f)
+	if err := w.Write([]string{"Name", "Login", "URL", "Avatar URL", "Company", "Location", "Followers", "Shared Followers"}); err != nil {
+		return util.Errorf("failed to write to CSV: %s", err)
+	}
+
+	shared := map[string]int{}
+	for _, s := range sg {
+		for _, f := range s.Followers {
+			shared[f.Login]++
+		}
+	}
+
+	// For each stargazer, output followers, and shared followers.
+	// Now accumulate by days.
+	for _, s := range sg {
+		sharedCount := 0
+		for _, f := range s.Followers {
+			if c := shared[f.Login]; c > 1 {
+				sharedCount++
+			}
+		}
+		url := fmt.Sprintf("https://github.com/%s", s.Login)
+		if err := w.Write([]string{s.Name, s.Login, url, s.AvatarURL, s.Company, s.Location, strconv.Itoa(s.User.Followers), strconv.Itoa(sharedCount)}); err != nil {
+			return util.Errorf("failed to write to CSV: %s", err)
+		}
+	}
+	w.Flush()
+	log.Infof("wrote followers analysis to %s", f.Name())
+
+	return nil
+}
+
 // RunCommitters lists stargazers by commits to subscribed repos, from
 // most prolific committer to least.
 func RunCommitters(c *fetch.Context, sg []*fetch.Stargazer, rs map[string]*fetch.Repo) error {
@@ -319,6 +322,85 @@ func RunCommitters(c *fetch.Context, sg []*fetch.Stargazer, rs map[string]*fetch
 	}
 	w.Flush()
 	log.Infof("wrote committers analysis to %s", f.Name())
+
+	return nil
+}
+
+// RunCumulativeStars creates a table of date and cumulative
+// star count for the provided stargazers.
+func RunAttributesByTime(c *fetch.Context, sg []*fetch.Stargazer, rs map[string]*fetch.Repo) error {
+	log.Infof("running stargazer attributes by time analysis")
+
+	// Open file and prepare.
+	f, err := createFile(c, "attributes_by_time.csv")
+	if err != nil {
+		return util.Errorf("failed to create file: %s", err)
+	}
+	defer f.Close()
+	w := csv.NewWriter(f)
+	if err := w.Write([]string{"Date", "New Stars", "Avg Age", "Avg Followers", "Avg Commits"}); err != nil {
+		return util.Errorf("failed to write to CSV: %s", err)
+	}
+
+	output := func(day int64, count, age, followers, commits int) error {
+		t := time.Unix(day*60*60*24, 0)
+		avgAge := fmt.Sprintf("%.2f", float64(age)/float64(count))
+		avgFollowers := fmt.Sprintf("%.2f", float64(followers)/float64(count))
+		avgCommits := fmt.Sprintf("%.2f", float64(commits)/float64(count))
+		if err := w.Write([]string{t.Format("01/02/2006"), strconv.Itoa(count), avgAge, avgFollowers, avgCommits}); err != nil {
+			return util.Errorf("failed to write to CSV: %s", err)
+		}
+		return nil
+	}
+
+	const daySeconds = 60 * 60 * 24
+
+	// Sort the stargazers.
+	slice := Stargazers(sg)
+	sort.Sort(slice)
+
+	// Accumulation factor means the count of days over which to average each sample.
+	factor := int64(7) // weekly
+
+	// Now accumulate by days.
+	firstDay := int64(0)
+	lastDay := int64(0)
+	count, age, followers, commits := 0, 0, 0, 0
+	for _, s := range slice {
+		t, err := time.Parse(time.RFC3339, s.StarredAt)
+		if err != nil {
+			return err
+		}
+		day := t.Unix() / daySeconds
+		if firstDay == 0 {
+			firstDay = day
+		}
+		if day != lastDay && (day-firstDay)%factor == 0 {
+			if count > 0 {
+				if err := output(lastDay, count, age, followers, commits); err != nil {
+					return err
+				}
+			}
+			lastDay = day
+			count = 1
+			age = int(s.Age() / daySeconds)
+			followers = len(s.Followers)
+			commits, _, _ = s.TotalCommits()
+		} else {
+			count++
+			age += int(s.Age() / daySeconds)
+			followers += len(s.Followers)
+			c, _, _ := s.TotalCommits()
+			commits += c
+		}
+	}
+	if count > 0 {
+		if err := output(lastDay, count, age, followers, commits); err != nil {
+			return err
+		}
+	}
+	w.Flush()
+	log.Infof("wrote stargazer attributes by time analysis to %s", f.Name())
 
 	return nil
 }

@@ -23,7 +23,7 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/cockroachdb/misc/stargazers/cmd"
+	"github.com/spencerkimball/stargazers/cmd"
 	"github.com/spf13/cobra"
 )
 

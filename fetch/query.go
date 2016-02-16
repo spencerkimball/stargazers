@@ -24,6 +24,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/cockroachdb/cockroach/util/log"
 )
@@ -188,6 +189,18 @@ type Stargazer struct {
 
 	// Contributions to subscribed repos (by repo FullName).
 	Contributions map[string]*Contribution `json:"contributions"`
+}
+
+// Age returns the age (time from current time to created at
+// timestamp) of this stargazer in seconds.
+func (s *Stargazer) Age() int64 {
+	curDay := time.Now().Unix()
+	createT, err := time.Parse(time.RFC3339, s.CreatedAt)
+	if err != nil {
+		log.Errorf("failed to parse created at timestamp (%s): %s", s.CreatedAt, err)
+		return 0
+	}
+	return curDay - createT.Unix()
 }
 
 // TotalCommits returns the total commits as well as additions and
