@@ -1,17 +1,49 @@
-# Stargazers
-Analyze GitHub stars
+## stargazers
 
-Run it using:
+illuminate your GitHub community by delving into your repo's stars
 
-go run main.go --repo=:owner/:repo --token=:token
+### Synopsis
 
-You can also run the data-fetching or analyses phases a la carte via:
 
-go run main.go fetch --repo=:owner/:repo --token=:token
 
-go run main.go analyze --repo=:owner/:repo
+GitHub allows visitors to star a repo to bookmark it for later
+perusal. Stars represent a casual interest in a repo, and when enough
+of them accumulate, it's natural to wonder what's driving interest.
+Stargazers attempts to get a handle on who these users are by finding
+out what else they've starred, which other repositories they've
+contributed to, and who's following them on GitHub.
 
-Data fetched from GitHub is cached locally as the original HTTP responses. A more minimal amount of state is saved after the fetch phase is complete and is loaded by the analyze phase, which is considerably more efficient. To clear out all of the cached HTTP responses use:
+Basic starting point:
 
-go run main.go clear
+1. List all stargazers
+2. Fetch user info for each stargazer
+3. For each stargazer, get list of starred repos & subscriptions
+4. For each stargazer subscription, query the repo statistics to
+   get additions / deletions & commit counts for that stargazer
+5. Run analyses on stargazer data
 
+
+```
+stargazers :owner/:repo --token=:access_token
+```
+
+### Examples
+
+```
+  stargazers cockroachdb/cockroach --token=f87456b1112dadb2d831a5792bf2ca9a6afca7bc
+```
+
+### Options
+
+```
+      --alsologtostderr    logs at or above this threshold go to stderr (default NONE)
+  -c, --cache string       directory for storing cached GitHub API responses (default "./stargazer_cache")
+      --log-backtrace-at   when logging hits line file:N, emit a stack trace (default :0)
+      --log-dir            if non-empty, write log files in this directory (default /var/folders/83/r_nmcwd969g5qc0b7my9wl900000gn/T/)
+      --logtostderr        log to standard error instead of files (default true)
+      --no-color           disable standard error log colorization
+  -r, --repo string        GitHub owner and repository, formatted as :owner/:repo
+  -t, --token string       GitHub access token for authorized rate limits
+      --verbosity          log level for V logs
+      --vmodule            comma-separated list of pattern=N settings for file-filtered logging
+```

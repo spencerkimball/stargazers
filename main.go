@@ -25,6 +25,7 @@ import (
 
 	"github.com/spencerkimball/stargazers/cmd"
 	"github.com/spf13/cobra"
+	"github.com/spf13/cobra/doc"
 )
 
 // pflagValue wraps flag.Value and implements the extra methods of the
@@ -81,11 +82,26 @@ func runStargazers(c *cobra.Command, args []string) error {
 	return nil
 }
 
+var genDocCmd = &cobra.Command{
+	Use:   "gendoc",
+	Short: "generate markdown documentation",
+	Long: `
+Generate markdown documentation
+`,
+	Example: `  stargazers gendoc`,
+	RunE:    runGenDoc,
+}
+
+func runGenDoc(c *cobra.Command, args []string) error {
+	return doc.GenMarkdown(stargazersCmd, os.Stdout)
+}
+
 func init() {
 	stargazersCmd.AddCommand(
 		cmd.AnalyzeCmd,
 		cmd.ClearCmd,
 		cmd.FetchCmd,
+		genDocCmd,
 	)
 	// Map any flags registered in the standard "flag" package into the
 	// top-level command.
