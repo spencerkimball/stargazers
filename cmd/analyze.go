@@ -18,8 +18,8 @@ package cmd
 
 import (
 	"errors"
+	"log"
 
-	"github.com/cockroachdb/cockroach/util/log"
 	"github.com/spencerkimball/stargazers/analyze"
 	"github.com/spencerkimball/stargazers/fetch"
 	"github.com/spf13/cobra"
@@ -51,19 +51,19 @@ func RunAnalyze(cmd *cobra.Command, args []string) error {
 	if len(Repo) == 0 {
 		return errors.New("repository not specified; use --repo=:owner/:repo")
 	}
-	log.Infof("fetching saved GitHub stargazer data for repository %s", Repo)
+	log.Printf("fetching saved GitHub stargazer data for repository %s", Repo)
 	fetchCtx := &fetch.Context{
 		Repo:     Repo,
 		CacheDir: CacheDir,
 	}
 	sg, rs, err := fetch.LoadState(fetchCtx)
 	if err != nil {
-		log.Errorf("failed to load saved stargazer data: %s", err)
+		log.Printf("failed to load saved stargazer data: %s", err)
 		return nil
 	}
-	log.Infof("analyzing GitHub data for repository %s", Repo)
+	log.Printf("analyzing GitHub data for repository %s", Repo)
 	if err := analyze.RunAll(fetchCtx, sg, rs); err != nil {
-		log.Errorf("failed to query stargazer data: %s", err)
+		log.Printf("failed to query stargazer data: %s", err)
 		return nil
 	}
 	return nil

@@ -21,13 +21,13 @@ import (
 	"bytes"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"os"
 	"path"
 	"path/filepath"
 	"strings"
 
-	"github.com/cockroachdb/cockroach/util/log"
 	"github.com/kennygrant/sanitize"
 )
 
@@ -47,9 +47,8 @@ func getCache(c *Context, req *http.Request) (*http.Response, error) {
 		}
 		return nil, err
 	}
-	if log.V(1) {
-		log.Infof("found %q in response cache", req.URL.String())
-	}
+	log.Printf("found %q in response cache", req.URL.String())
+
 	return resp, err
 }
 
@@ -74,14 +73,12 @@ func putCache(c *Context, req *http.Request, resp *http.Response) error {
 		return err
 	}
 	f.Close()
-	if log.V(1) {
-		log.Infof("wrote %q to response cache", req.URL.String())
-	}
+	log.Printf("wrote %q to response cache", req.URL.String())
 
 	// TODO(spencer): this sucks, but we must re-read the response as
 	// the body is closed during the call to resp.Write().
 	if readResp, err := readCachedResponse(filename, req); err != nil {
-		log.Errorf("failed reading cached response: %s", err)
+		log.Printf("failed reading cached response: %s", err)
 		return err
 	} else {
 		resp.Body = readResp.Body

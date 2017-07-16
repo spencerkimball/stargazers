@@ -18,8 +18,8 @@ package cmd
 
 import (
 	"errors"
+	"log"
 
-	"github.com/cockroachdb/cockroach/util/log"
 	"github.com/spencerkimball/stargazers/fetch"
 	"github.com/spf13/cobra"
 )
@@ -50,14 +50,14 @@ func RunFetch(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	log.Infof("fetching GitHub data for repository %s", Repo)
+	log.Printf("fetching GitHub data for repository %s", Repo)
 	fetchCtx := &fetch.Context{
 		Repo:     Repo,
 		Token:    token,
 		CacheDir: CacheDir,
 	}
 	if err := fetch.QueryAll(fetchCtx); err != nil {
-		log.Errorf("failed to query stargazer data: %s", err)
+		log.Printf("failed to query stargazer data: %s", err)
 		return nil
 	}
 	return nil

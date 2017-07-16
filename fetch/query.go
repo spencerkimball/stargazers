@@ -20,13 +20,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
-
-	"github.com/cockroachdb/cockroach/util/log"
 )
 
 // TODO(spencer): this would all benefit from using a GitHub API
@@ -197,7 +196,7 @@ func (s *Stargazer) Age() int64 {
 	curDay := time.Now().Unix()
 	createT, err := time.Parse(time.RFC3339, s.CreatedAt)
 	if err != nil {
-		log.Errorf("failed to parse created at timestamp (%s): %s", s.CreatedAt, err)
+		log.Printf("failed to parse created at timestamp (%s): %s", s.CreatedAt, err)
 		return 0
 	}
 	return curDay - createT.Unix()
@@ -255,7 +254,7 @@ func QueryAll(c *Context) error {
 func QueryStargazers(c *Context) ([]*Stargazer, error) {
 	cCopy := *c
 	cCopy.acceptHeader = "application/vnd.github.v3.star+json"
-	log.Infof("querying stargazers of repository %s", c.Repo)
+	log.Printf("querying stargazers of repository %s", c.Repo)
 	url := fmt.Sprintf("%srepos/%s/stargazers", githubAPI, c.Repo)
 	stargazers := []*Stargazer{}
 	var err error
@@ -275,7 +274,7 @@ func QueryStargazers(c *Context) ([]*Stargazer, error) {
 
 // QueryUserInfo queries user info for each stargazer.
 func QueryUserInfo(c *Context, sg []*Stargazer) error {
-	log.Infof("querying user info for each of %s stargazers...", format(len(sg)))
+	log.Printf("querying user info for each of %s stargazers...", format(len(sg)))
 	fmt.Printf("*** user info for 0 stargazers")
 	for i, s := range sg {
 		if _, err := fetchURL(c, s.URL, &s.User, false); err != nil {
@@ -289,7 +288,7 @@ func QueryUserInfo(c *Context, sg []*Stargazer) error {
 
 // QueryFollowers queries each stargazers list of followers.
 func QueryFollowers(c *Context, sg []*Stargazer) error {
-	log.Infof("querying followers for each of %s stargazers...", format(len(sg)))
+	log.Printf("querying followers for each of %s stargazers...", format(len(sg)))
 	total := 0
 	fmt.Printf("*** 0 followers for 0 stargazers")
 	uniqueFollowers := map[int]struct{}{}
@@ -317,7 +316,7 @@ func QueryFollowers(c *Context, sg []*Stargazer) error {
 
 // QueryStarred queries all starred repos for each stargazer.
 func QueryStarred(c *Context, sg []*Stargazer, rs map[string]*Repo) error {
-	log.Infof("querying starred repos for each of %s stargazers...", format(len(sg)))
+	log.Printf("querying starred repos for each of %s stargazers...", format(len(sg)))
 	starred := 0
 	fmt.Printf("*** 0 starred repos for 0 stargazers")
 	uniqueStarred := map[int]struct{}{}
@@ -349,7 +348,7 @@ func QueryStarred(c *Context, sg []*Stargazer, rs map[string]*Repo) error {
 
 // QuerySubscribed queries all subscribed repos for each stargazer.
 func QuerySubscribed(c *Context, sg []*Stargazer, rs map[string]*Repo) error {
-	log.Infof("querying subscribed repos for each of %s stargazers...", format(len(sg)))
+	log.Printf("querying subscribed repos for each of %s stargazers...", format(len(sg)))
 	subscribed := 0
 	fmt.Printf("*** 0 subscribed repos for 0 stargazers")
 	uniqueSubscribed := map[int]struct{}{}
@@ -381,7 +380,7 @@ func QuerySubscribed(c *Context, sg []*Stargazer, rs map[string]*Repo) error {
 // QueryContributions queries all contributions to subscribed repos
 // for each stargazer.
 func QueryContributions(c *Context, sg []*Stargazer, rs map[string]*Repo) error {
-	log.Infof("querying contributions to subscribed repos for each of %s stargazers...", format(len(sg)))
+	log.Printf("querying contributions to subscribed repos for each of %s stargazers...", format(len(sg)))
 	authors := map[string]struct{}{}
 	for _, s := range sg {
 		authors[s.Login] = struct{}{}
@@ -447,7 +446,7 @@ func QueryStatistics(c *Context, r *Repo, authors map[string]struct{}) error {
 
 // SaveState writes all queried stargazer and repo data.
 func SaveState(c *Context, sg []*Stargazer, rs map[string]*Repo) error {
-	log.Infof("saving state")
+	log.Printf("saving state")
 	filename := filepath.Join(c.CacheDir, c.Repo, "saved_state")
 	f, err := os.Create(filename)
 	if err != nil {
@@ -455,11 +454,11 @@ func SaveState(c *Context, sg []*Stargazer, rs map[string]*Repo) error {
 	}
 	defer f.Close()
 	enc := json.NewEncoder(f)
-	log.Infof("encoding stargazers data")
+	log.Printf("encoding stargazers data")
 	if err := enc.Encode(sg); err != nil {
 		return errors.New(fmt.Sprintf("failed to encode stargazer data: %s", err))
 	}
-	log.Infof("encoding repository data")
+	log.Printf("encoding repository data")
 	if err := enc.Encode(rs); err != nil {
 		return errors.New(fmt.Sprintf("failed to encode repo data: %s", err))
 	}
@@ -468,7 +467,7 @@ func SaveState(c *Context, sg []*Stargazer, rs map[string]*Repo) error {
 
 // LoadState reads previously saved queried stargazer and repo data.
 func LoadState(c *Context) ([]*Stargazer, map[string]*Repo, error) {
-	log.Infof("loading state")
+	log.Printf("loading state")
 	filename := filepath.Join(c.CacheDir, c.Repo, "saved_state")
 	f, err := os.Open(filename)
 	if err != nil {
@@ -477,12 +476,12 @@ func LoadState(c *Context) ([]*Stargazer, map[string]*Repo, error) {
 	defer f.Close()
 	dec := json.NewDecoder(f)
 	sg := []*Stargazer{}
-	log.Infof("decoding stargazers data")
+	log.Printf("decoding stargazers data")
 	if err := dec.Decode(&sg); err != nil {
 		return nil, nil, errors.New(fmt.Sprintf("failed to decode stargazer data: %s", err))
 	}
 	rs := map[string]*Repo{}
-	log.Infof("decoding repository data")
+	log.Printf("decoding repository data")
 	if err := dec.Decode(&rs); err != nil {
 		return nil, nil, errors.New(fmt.Sprintf("failed to decode repo data: %s", err))
 	}
