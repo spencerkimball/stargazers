@@ -19,14 +19,13 @@ package analyze
 import (
 	"encoding/csv"
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 	"sort"
 	"strconv"
 	"time"
 
-	"github.com/cockroachdb/cockroach/util"
-	"github.com/cockroachdb/cockroach/util/log"
 	"github.com/spencerkimball/stargazers/fetch"
 )
 
@@ -111,17 +110,17 @@ func RunAll(c *fetch.Context, sg []*fetch.Stargazer, rs map[string]*fetch.Repo) 
 // RunCumulativeStars creates a table of date and cumulative
 // star count for the provided stargazers.
 func RunCumulativeStars(c *fetch.Context, sg []*fetch.Stargazer) error {
-	log.Infof("running cumulative stars analysis")
+	log.Printf("running cumulative stars analysis")
 
 	// Open file and prepare.
 	f, err := createFile(c, "cumulative_stars.csv")
 	if err != nil {
-		return util.Errorf("failed to create file: %s", err)
+		return fmt.Errorf("failed to create file: %s", err)
 	}
 	defer f.Close()
 	w := csv.NewWriter(f)
 	if err := w.Write([]string{"Date", "New", "Cumulative"}); err != nil {
-		return util.Errorf("failed to write to CSV: %s", err)
+		return fmt.Errorf("failed to write to CSV: %s", err)
 	}
 
 	// Sort the stargazers.
@@ -142,7 +141,7 @@ func RunCumulativeStars(c *fetch.Context, sg []*fetch.Stargazer) error {
 			if count > 0 {
 				t := time.Unix(lastDay*60*60*24, 0)
 				if err := w.Write([]string{t.Format("01/02/2006"), strconv.Itoa(count), strconv.Itoa(total)}); err != nil {
-					return util.Errorf("failed to write to CSV: %s", err)
+					return fmt.Errorf("failed to write to CSV: %s", err)
 				}
 			}
 			lastDay = day
@@ -155,11 +154,11 @@ func RunCumulativeStars(c *fetch.Context, sg []*fetch.Stargazer) error {
 	if count > 0 {
 		t := time.Unix(lastDay*60*60*24, 0)
 		if err := w.Write([]string{t.Format("01/02/2006"), strconv.Itoa(count), strconv.Itoa(total)}); err != nil {
-			return util.Errorf("failed to write to CSV: %s", err)
+			return fmt.Errorf("failed to write to CSV: %s", err)
 		}
 	}
 	w.Flush()
-	log.Infof("wrote cumulative stars analysis to %s", f.Name())
+	log.Printf("wrote cumulative stars analysis to %s", f.Name())
 
 	return nil
 }
@@ -167,17 +166,17 @@ func RunCumulativeStars(c *fetch.Context, sg []*fetch.Stargazer) error {
 // RunCorrelatedRepos creates a map from repo name to count of
 // repos for repo lists of each stargazer.
 func RunCorrelatedRepos(c *fetch.Context, listType string, sg []*fetch.Stargazer, rs map[string]*fetch.Repo) error {
-	log.Infof("running correlated starred repos analysis")
+	log.Printf("running correlated starred repos analysis")
 
 	// Open file and prepare.
 	f, err := createFile(c, fmt.Sprintf("correlated_%s_repos.csv", listType))
 	if err != nil {
-		return util.Errorf("failed to create file: %s", err)
+		return fmt.Errorf("failed to create file: %s", err)
 	}
 	defer f.Close()
 	w := csv.NewWriter(f)
 	if err := w.Write([]string{"Repository", "URL", "Count", "Committers", "Commits", "Additions", "Deletions"}); err != nil {
-		return util.Errorf("failed to write to CSV: %s", err)
+		return fmt.Errorf("failed to write to CSV: %s", err)
 	}
 	// Compute counts.
 	counts := map[string]int{}
@@ -205,21 +204,21 @@ func RunCorrelatedRepos(c *fetch.Context, listType string, sg []*fetch.Stargazer
 		url := fmt.Sprintf("https://github.com/%s", rs[r.name].FullName)
 		if err := w.Write([]string{r.name, url, strconv.Itoa(r.count), strconv.Itoa(len(rs[r.name].Statistics)),
 			strconv.Itoa(c), strconv.Itoa(a), strconv.Itoa(d)}); err != nil {
-			return util.Errorf("failed to write to CSV: %s", err)
+			return fmt.Errorf("failed to write to CSV: %s", err)
 		}
 	}
 	w.Flush()
-	log.Infof("wrote correlated %s repos analysis to %s", listType, f.Name())
+	log.Printf("wrote correlated %s repos analysis to %s", listType, f.Name())
 
 	// Open histogram file.
 	fHist, err := createFile(c, fmt.Sprintf("correlated_%s_repos_hist.csv", listType))
 	if err != nil {
-		return util.Errorf("failed to create file: %s", err)
+		return fmt.Errorf("failed to create file: %s", err)
 	}
 	defer fHist.Close()
 	wHist := csv.NewWriter(fHist)
 	if err := wHist.Write([]string{"Correlation", "Count"}); err != nil {
-		return util.Errorf("failed to write to CSV: %s", err)
+		return fmt.Errorf("failed to write to CSV: %s", err)
 	}
 	lastCorrelation := 0
 	count := 0
@@ -227,7 +226,7 @@ func RunCorrelatedRepos(c *fetch.Context, listType string, sg []*fetch.Stargazer
 		if lastCorrelation != r.count {
 			if count > 0 {
 				if err := wHist.Write([]string{strconv.Itoa(lastCorrelation), strconv.Itoa(count)}); err != nil {
-					return util.Errorf("failed to write to CSV: %s", err)
+					return fmt.Errorf("failed to write to CSV: %s", err)
 				}
 			}
 			lastCorrelation = r.count
@@ -238,11 +237,11 @@ func RunCorrelatedRepos(c *fetch.Context, listType string, sg []*fetch.Stargazer
 	}
 	if count > 0 {
 		if err := wHist.Write([]string{strconv.Itoa(lastCorrelation), strconv.Itoa(count)}); err != nil {
-			return util.Errorf("failed to write to CSV: %s", err)
+			return fmt.Errorf("failed to write to CSV: %s", err)
 		}
 	}
 	wHist.Flush()
-	log.Infof("wrote correlated %s repos histogram to %s", listType, fHist.Name())
+	log.Printf("wrote correlated %s repos histogram to %s", listType, fHist.Name())
 
 	return nil
 }
@@ -250,17 +249,17 @@ func RunCorrelatedRepos(c *fetch.Context, listType string, sg []*fetch.Stargazer
 // RunFollowers computes the size of follower networks, as well as
 // the count of shared followers.
 func RunFollowers(c *fetch.Context, sg []*fetch.Stargazer) error {
-	log.Infof("running followers analysis")
+	log.Printf("running followers analysis")
 
 	// Open file and prepare.
 	f, err := createFile(c, "followers.csv")
 	if err != nil {
-		return util.Errorf("failed to create file: %s", err)
+		return fmt.Errorf("failed to create file: %s", err)
 	}
 	defer f.Close()
 	w := csv.NewWriter(f)
 	if err := w.Write([]string{"Name", "Login", "URL", "Avatar URL", "Company", "Location", "Followers", "Shared Followers"}); err != nil {
-		return util.Errorf("failed to write to CSV: %s", err)
+		return fmt.Errorf("failed to write to CSV: %s", err)
 	}
 
 	shared := map[string]int{}
@@ -281,11 +280,11 @@ func RunFollowers(c *fetch.Context, sg []*fetch.Stargazer) error {
 		}
 		url := fmt.Sprintf("https://github.com/%s", s.Login)
 		if err := w.Write([]string{s.Name, s.Login, url, s.AvatarURL, s.Company, s.Location, strconv.Itoa(s.User.Followers), strconv.Itoa(sharedCount)}); err != nil {
-			return util.Errorf("failed to write to CSV: %s", err)
+			return fmt.Errorf("failed to write to CSV: %s", err)
 		}
 	}
 	w.Flush()
-	log.Infof("wrote followers analysis to %s", f.Name())
+	log.Printf("wrote followers analysis to %s", f.Name())
 
 	return nil
 }
@@ -293,17 +292,17 @@ func RunFollowers(c *fetch.Context, sg []*fetch.Stargazer) error {
 // RunCommitters lists stargazers by commits to subscribed repos, from
 // most prolific committer to least.
 func RunCommitters(c *fetch.Context, sg []*fetch.Stargazer, rs map[string]*fetch.Repo) error {
-	log.Infof("running committers analysis")
+	log.Printf("running committers analysis")
 
 	// Open file and prepare.
 	f, err := createFile(c, "committers.csv")
 	if err != nil {
-		return util.Errorf("failed to create file: %s", err)
+		return fmt.Errorf("failed to create file: %s", err)
 	}
 	defer f.Close()
 	w := csv.NewWriter(f)
 	if err := w.Write([]string{"Login", "Email", "Commits", "Additions", "Deletions"}); err != nil {
-		return util.Errorf("failed to write to CSV: %s", err)
+		return fmt.Errorf("failed to write to CSV: %s", err)
 	}
 
 	// Sort the stargazers.
@@ -317,11 +316,11 @@ func RunCommitters(c *fetch.Context, sg []*fetch.Stargazer, rs map[string]*fetch
 			break
 		}
 		if err := w.Write([]string{s.Login, s.Email, strconv.Itoa(c), strconv.Itoa(a), strconv.Itoa(d)}); err != nil {
-			return util.Errorf("failed to write to CSV: %s", err)
+			return fmt.Errorf("failed to write to CSV: %s", err)
 		}
 	}
 	w.Flush()
-	log.Infof("wrote committers analysis to %s", f.Name())
+	log.Printf("wrote committers analysis to %s", f.Name())
 
 	return nil
 }
@@ -329,17 +328,17 @@ func RunCommitters(c *fetch.Context, sg []*fetch.Stargazer, rs map[string]*fetch
 // RunCumulativeStars creates a table of date and cumulative
 // star count for the provided stargazers.
 func RunAttributesByTime(c *fetch.Context, sg []*fetch.Stargazer, rs map[string]*fetch.Repo) error {
-	log.Infof("running stargazer attributes by time analysis")
+	log.Printf("running stargazer attributes by time analysis")
 
 	// Open file and prepare.
 	f, err := createFile(c, "attributes_by_time.csv")
 	if err != nil {
-		return util.Errorf("failed to create file: %s", err)
+		return fmt.Errorf("failed to create file: %s", err)
 	}
 	defer f.Close()
 	w := csv.NewWriter(f)
 	if err := w.Write([]string{"Date", "New Stars", "Avg Age", "Avg Followers", "Avg Commits"}); err != nil {
-		return util.Errorf("failed to write to CSV: %s", err)
+		return fmt.Errorf("failed to write to CSV: %s", err)
 	}
 
 	output := func(day int64, count, age, followers, commits int) error {
@@ -348,7 +347,7 @@ func RunAttributesByTime(c *fetch.Context, sg []*fetch.Stargazer, rs map[string]
 		avgFollowers := fmt.Sprintf("%.2f", float64(followers)/float64(count))
 		avgCommits := fmt.Sprintf("%.2f", float64(commits)/float64(count))
 		if err := w.Write([]string{t.Format("01/02/2006"), strconv.Itoa(count), avgAge, avgFollowers, avgCommits}); err != nil {
-			return util.Errorf("failed to write to CSV: %s", err)
+			return fmt.Errorf("failed to write to CSV: %s", err)
 		}
 		return nil
 	}
@@ -400,7 +399,7 @@ func RunAttributesByTime(c *fetch.Context, sg []*fetch.Stargazer, rs map[string]
 		}
 	}
 	w.Flush()
-	log.Infof("wrote stargazer attributes by time analysis to %s", f.Name())
+	log.Printf("wrote stargazer attributes by time analysis to %s", f.Name())
 
 	return nil
 }

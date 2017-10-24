@@ -18,8 +18,8 @@ package cmd
 
 import (
 	"errors"
+	"log"
 
-	"github.com/cockroachdb/cockroach/util/log"
 	"github.com/spencerkimball/stargazers/fetch"
 	"github.com/spf13/cobra"
 )
@@ -41,13 +41,13 @@ func RunClear(cmd *cobra.Command, args []string) error {
 	if len(Repo) == 0 {
 		return errors.New("repository not specified; use --repo=:owner/:repo")
 	}
-	log.Infof("clearing GitHub API response cache for repository %s", Repo)
+	log.Printf("clearing GitHub API response cache for repository %s", Repo)
 	fetchCtx := &fetch.Context{
 		Repo:     Repo,
 		CacheDir: CacheDir,
 	}
 	if err := fetch.Clear(fetchCtx); err != nil {
-		log.Errorf("failed to clear cached responses: %s", err)
+		log.Printf("failed to clear cached responses: %s", err)
 		return nil
 	}
 	return nil
