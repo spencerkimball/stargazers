@@ -303,14 +303,14 @@ func RunStargazers(c *fetch.Context, sg []*fetch.Stargazer) error {
 	}
 	defer f.Close()
 	w := csv.NewWriter(f)
-	if err := w.Write([]string{"Name", "Login", "Email", "URL", "Avatar URL", "Company", "Location"}); err != nil {
+	if err := w.Write([]string{"Name", "Login", "Email", "Blog URL", "GitHub URL", "Avatar URL", "Company", "Location", "Bio"}); err != nil {
 		return fmt.Errorf("failed to write to CSV: %s", err)
 	}
 
 	// For each stargazer, output profile info.
 	for _, s := range sg {
 		url := fmt.Sprintf("https://github.com/%s", s.Login)
-		if err := w.Write([]string{s.Name, s.Login, s.Email, url, s.AvatarURL, s.Company, s.Location}); err != nil {
+		if err := w.Write([]string{s.Name, s.Login, s.Email, s.Blog, url, s.AvatarURL, s.Company, s.Location, s.Bio}); err != nil {
 			return fmt.Errorf("failed to write to CSV: %s", err)
 		}
 	}
