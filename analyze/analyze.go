@@ -95,6 +95,9 @@ func RunAll(c *fetch.Context, sg []*fetch.Stargazer, rs map[string]*fetch.Repo) 
 	if err := RunCorrelatedRepos(c, "subscribed", sg, rs); err != nil {
 		return err
 	}
+	if err := RunStargazers(c, sg); err != nil {
+		return err
+	}
 	if err := RunFollowers(c, sg); err != nil {
 		return err
 	}
@@ -286,6 +289,33 @@ func RunFollowers(c *fetch.Context, sg []*fetch.Stargazer) error {
 	w.Flush()
 	log.Printf("wrote followers analysis to %s", f.Name())
 
+	return nil
+}
+
+// RunStargazers computes profile info of stargazer network
+func RunStargazers(c *fetch.Context, sg []*fetch.Stargazer) error {
+	log.Printf("running stargazers analysis")
+
+	// Open file and prepare.
+	f, err := createFile(c, "stargazers.csv")
+	if err != nil {
+		return fmt.Errorf("failed to create file: %s", err)
+	}
+	defer f.Close()
+	w := csv.NewWriter(f)
+	if err := w.Write([]string{"Name", "Login", "Email", "Blog URL", "GitHub URL", "Avatar URL", "Company", "Location", "Bio"}); err != nil {
+		return fmt.Errorf("failed to write to CSV: %s", err)
+	}
+
+	// For each stargazer, output profile info.
+	for _, s := range sg {
+		url := fmt.Sprintf("https://github.com/%s", s.Login)
+		if err := w.Write([]string{s.Name, s.Login, s.Email, s.Blog, url, s.AvatarURL, s.Company, s.Location, s.Bio}); err != nil {
+			return fmt.Errorf("failed to write to CSV: %s", err)
+		}
+	}
+	w.Flush()
+	log.Printf("wrote stargate analysis to %s", f.Name())
 	return nil
 }
 
