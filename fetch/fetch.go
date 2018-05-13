@@ -59,7 +59,7 @@ func (e *httpError) Error() string {
 }
 
 // linkRE provides parsing of the "Link" HTTP header directive.
-var linkRE = regexp.MustCompile(`^<(.*)>; rel="next", <(.*)>; rel="last".*`)
+var linkRE = regexp.MustCompile(`^.*<(.*)>; rel="next", <(.*)>; rel="last".*`)
 
 // fetchURL fetches the specified URL. The cache (specified in
 // c.CacheDir) is consulted first and if not found, the specified URL
