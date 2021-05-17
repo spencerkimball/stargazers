@@ -24,13 +24,15 @@ Basic starting point:
 
 
 ```
-stargazers :owner/:repo --token=:access_token
+make &&
+./stargazers -r :owner/:repo --token=:access_token
 ```
 
 ### Examples
 
 ```
-  stargazers cockroachdb/cockroach --token=f87456b1112dadb2d831a5792bf2ca9a6afca7bc
+make &&
+./stargazers -r cockroachdb/cockroach --token=f87456b1112dadb2d831a5792bf2ca9a6afca7bc
 ```
 
 ### Options
