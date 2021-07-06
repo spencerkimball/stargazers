@@ -2,3 +2,5 @@
 *~
 stargazers
 stargazer_cache/
+vendor/
+.DS_Store
